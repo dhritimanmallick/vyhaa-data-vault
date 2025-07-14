@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -11,10 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, Home, Users, FileText } from 'lucide-react';
 
 export default function Layout() {
   const { profile, signOut, isAdmin } = useAuth();
+  const location = useLocation();
 
   const getInitials = (name: string) => {
     return name
@@ -29,7 +30,7 @@ export default function Layout() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
             <h1 className="text-xl font-bold">Vyuhaa Med Data</h1>
             {isAdmin && (
               <span className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded-full">
@@ -37,6 +38,40 @@ export default function Layout() {
               </span>
             )}
           </div>
+
+          <nav className="flex items-center space-x-4">
+            <Link to="/">
+              <Button 
+                variant={location.pathname === '/' ? 'default' : 'ghost'} 
+                size="sm"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+            {isAdmin && (
+              <>
+                <Link to="/documents">
+                  <Button 
+                    variant={location.pathname === '/documents' ? 'default' : 'ghost'} 
+                    size="sm"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Documents
+                  </Button>
+                </Link>
+                <Link to="/users">
+                  <Button 
+                    variant={location.pathname === '/users' ? 'default' : 'ghost'} 
+                    size="sm"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Users
+                  </Button>
+                </Link>
+              </>
+            )}
+          </nav>
 
           <div className="flex items-center space-x-4">
             <DropdownMenu>

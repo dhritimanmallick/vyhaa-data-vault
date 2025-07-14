@@ -9,6 +9,7 @@ import Layout from "@/components/Layout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import UserManagement from "@/pages/UserManagement";
+import DocumentManagement from "@/pages/DocumentManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,11 @@ const App = () => (
               <Route path="users" element={
                 <ProtectedRoute requireAdmin>
                   <UserManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="documents" element={
+                <ProtectedRoute requireAdmin>
+                  <DocumentManagement />
                 </ProtectedRoute>
               } />
             </Route>
