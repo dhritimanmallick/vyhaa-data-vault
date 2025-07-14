@@ -79,7 +79,11 @@ export default function Dashboard() {
               <Files className="h-6 w-6 mb-2" />
               Upload Document
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center"
+              onClick={() => window.location.href = '/users'}
+            >
               <Users className="h-6 w-6 mb-2" />
               Manage Users
             </Button>

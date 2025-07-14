@@ -9,12 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Auth() {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, loading } = useAuth();
   const { toast } = useToast();
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,46 +29,20 @@ export default function Auth() {
     setIsSubmitting(true);
 
     try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          setError(error.message);
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You have successfully signed in.",
-          });
-        }
+      const { error } = await signIn(email, password);
+      if (error) {
+        setError(error.message);
       } else {
-        if (!fullName.trim()) {
-          setError('Full name is required');
-          return;
-        }
-        
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          setError(error.message);
-        } else {
-          toast({
-            title: "Account created!",
-            description: "Please check your email to verify your account.",
-          });
-          setIsLogin(true);
-        }
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
       }
     } catch (error: any) {
       setError(error.message || 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setError('');
-    setEmail('');
-    setPassword('');
-    setFullName('');
   };
 
   if (loading) {
@@ -89,25 +61,11 @@ export default function Auth() {
             Vyuhaa Med Data
           </CardTitle>
           <CardDescription>
-            {isLogin ? 'Sign in to your account' : 'Create a new account'}
+            Sign in to access your documents
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required={!isLogin}
-                />
-              </div>
-            )}
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -147,26 +105,13 @@ export default function Auth() {
               {isSubmitting ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                  Signing in...
                 </div>
               ) : (
-                isLogin ? 'Sign In' : 'Sign Up'
+                'Sign In'
               )}
             </Button>
           </form>
-
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              onClick={toggleMode}
-              className="text-sm"
-            >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"
-              }
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
