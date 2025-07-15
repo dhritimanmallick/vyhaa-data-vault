@@ -66,33 +66,38 @@ const handler = async (req: Request): Promise<Response> => {
     const uploadData: UploadRequest = await req.json();
     const { fileName, fileContent, fileSize, mimeType, category, subcategory, description, tags } = uploadData;
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = '/var/www/uploads';
-    try {
-      await Deno.mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      // Directory might already exist, that's fine
-      console.log('Upload directory exists or created');
-    }
-
     // Generate unique filename to prevent conflicts
     const timestamp = Date.now();
     const uniqueFileName = `${timestamp}_${fileName}`;
-    const filePath = `${uploadsDir}/${uniqueFileName}`;
-    const publicPath = `/uploads/${uniqueFileName}`; // Path for nginx serving
+    const storagePath = `${category || 'uncategorized'}/${uniqueFileName}`;
 
-    // Decode base64 content and write to file
+    // Decode base64 content
     const fileBuffer = Uint8Array.from(atob(fileContent), c => c.charCodeAt(0));
-    await Deno.writeFile(filePath, fileBuffer);
+    
+    // Upload to Supabase Storage
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from('documents')
+      .upload(storagePath, fileBuffer, {
+        contentType: mimeType,
+        upsert: false
+      });
 
-    console.log(`File uploaded to: ${filePath}`);
+    if (storageError) {
+      console.error('Storage error:', storageError);
+      return new Response(JSON.stringify({ error: 'Failed to upload file to storage' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`File uploaded to storage: ${storagePath}`);
 
     // Save document metadata to database
     const { data: document, error: dbError } = await supabase
       .from('documents')
       .insert({
         name: fileName,
-        file_path: publicPath, // Store the nginx-accessible path
+        file_path: storagePath, // Store the storage path
         file_size: fileSize,
         mime_type: mimeType,
         category: category || null,
@@ -108,7 +113,9 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Database error:', dbError);
       // Try to clean up the uploaded file if database insert fails
       try {
-        await Deno.remove(filePath);
+        await supabase.storage
+          .from('documents')
+          .remove([storagePath]);
       } catch (cleanupError) {
         console.error('Failed to cleanup file after database error:', cleanupError);
       }
