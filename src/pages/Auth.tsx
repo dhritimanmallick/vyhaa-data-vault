@@ -9,12 +9,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Auth() {
-  const { user, signIn, loading } = useAuth();
+  const { user, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
 
   // Redirect if already authenticated
   if (user && !loading) {
@@ -29,14 +32,30 @@ export default function Auth() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await signIn(email, password);
-      if (error) {
-        setError(error.message);
+      if (isSignUp) {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+        const { error } = await signUp(email, password, fullName);
+        if (error) {
+          setError(error.message);
+        } else {
+          toast({
+            title: "Account created!",
+            description: "You have successfully signed up and are now logged in.",
+          });
+        }
       } else {
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
-        });
+        const { error } = await signIn(email, password);
+        if (error) {
+          setError(error.message);
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in.",
+          });
+        }
       }
     } catch (error: any) {
       setError(error.message || 'An unexpected error occurred');
@@ -61,11 +80,25 @@ export default function Auth() {
             Vyuhaa Med Data
           </CardTitle>
           <CardDescription>
-            Sign in to access your documents
+            {isSignUp ? 'Create your admin account' : 'Sign in to access your documents'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,6 +124,21 @@ export default function Auth() {
               />
             </div>
 
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -105,12 +153,33 @@ export default function Auth() {
               {isSubmitting ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  {isSignUp ? 'Creating account...' : 'Signing in...'}
                 </div>
               ) : (
-                'Sign In'
+                isSignUp ? 'Create Admin Account' : 'Sign In'
               )}
             </Button>
+            
+            <div className="text-center">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                  setEmail('');
+                  setPassword('');
+                  setConfirmPassword('');
+                  setFullName('');
+                }}
+                className="text-sm"
+              >
+                {isSignUp 
+                  ? 'Already have an account? Sign in' 
+                  : 'Need to create an admin account? Sign up'
+                }
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
