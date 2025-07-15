@@ -64,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Convert public path back to actual file path
-    const actualFilePath = `/var/www${document.file_path}`;
+    const actualFilePath = `./uploads${document.file_path.replace('/uploads', '')}`;
 
     // Check if file exists
     try {
