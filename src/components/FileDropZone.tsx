@@ -93,38 +93,55 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
     try {
       for (const fileData of files) {
         console.log('Uploading file:', fileData.name);
-        // Convert file to base64
-        const fileBuffer = await fileData.file.arrayBuffer();
-        const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
-
-        const uploadRequest = {
-          fileName: fileData.name,
-          fileContent: base64Content,
-          fileSize: fileData.file.size,
-          mimeType: fileData.file.type,
-          category: selectedFolder,
-          subcategory: fileData.subcategory || null,
-          description: fileData.description || null,
-          tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
-        };
-
-        console.log('Sending upload request:', uploadRequest);
         
-        const { data, error } = await supabase.functions.invoke('upload-file-local', {
-          body: uploadRequest,
-        });
+        try {
+          // Convert file to base64
+          const fileBuffer = await fileData.file.arrayBuffer();
+          const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
-        console.log('Upload response:', { data, error });
+          const uploadRequest = {
+            fileName: fileData.name,
+            fileContent: base64Content,
+            fileSize: fileData.file.size,
+            mimeType: fileData.file.type,
+            category: selectedFolder,
+            subcategory: fileData.subcategory || null,
+            description: fileData.description || null,
+            tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
+          };
 
-        if (error) {
-          console.error('Upload error for', fileData.name, ':', error);
+          console.log('Sending upload request for:', fileData.name, {
+            fileName: uploadRequest.fileName,
+            fileSize: uploadRequest.fileSize,
+            mimeType: uploadRequest.mimeType,
+            category: uploadRequest.category,
+            subcategory: uploadRequest.subcategory
+          });
+          
+          const { data, error } = await supabase.functions.invoke('upload-file-local', {
+            body: uploadRequest,
+          });
+
+          console.log('Upload response for', fileData.name, ':', { data, error });
+
+          if (error) {
+            console.error('Upload error for', fileData.name, ':', error);
+            toast({
+              title: "Upload Failed",
+              description: `Failed to upload ${fileData.name}: ${error.message}`,
+              variant: "destructive",
+            });
+          } else {
+            console.log('Successfully uploaded:', fileData.name);
+            uploadedCount++;
+          }
+        } catch (fileError) {
+          console.error('Error processing file', fileData.name, ':', fileError);
           toast({
             title: "Upload Failed",
-            description: `Failed to upload ${fileData.name}: ${error.message}`,
+            description: `Failed to process ${fileData.name}: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`,
             variant: "destructive",
           });
-        } else {
-          uploadedCount++;
         }
       }
 
