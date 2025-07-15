@@ -36,8 +36,7 @@ if [ -d "$REPO_DIR" ]; then
     git pull origin main
 else
     echo "📥 Cloning repository..."
-    # Replace with your actual GitHub repository URL
-    git clone https://github.com/YOUR_USERNAME/vyuhaa-dataroom.git
+    git clone https://github.com/lovable-dev/vyuhaa-dataroom.git
     cd $REPO_DIR
 fi
 
