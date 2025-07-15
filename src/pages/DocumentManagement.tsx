@@ -143,32 +143,35 @@ export default function DocumentManagement() {
     try {
       console.log('Starting download for:', document.name);
       
-      const { data, error } = await supabase.functions.invoke('download-file-local', {
-        body: { documentId: document.id },
+      // Use fetch directly to get the binary response
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`https://rzhjagwjxkjlhwmpysxa.supabase.co/functions/v1/download-file-local`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ documentId: document.id }),
       });
 
-      console.log('Download response:', { data, error });
+      console.log('Download response status:', response.status);
 
-      if (error) {
-        console.error('Download error:', error);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Download error response:', errorText);
+        throw new Error(`Download failed: ${response.status} ${errorText}`);
       }
 
-      // The data should be the file content as arrayBuffer
-      if (!data) {
-        throw new Error('No file data received');
-      }
+      // Get the binary data
+      const blob = await response.blob();
+      console.log('Downloaded blob size:', blob.size, 'bytes');
 
-      // Create blob from the response data
-      let blob;
-      if (data instanceof ArrayBuffer) {
-        blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
-      } else if (data instanceof Uint8Array) {
-        blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
-      } else {
-        // If data is base64 or other format, convert it
-        const uint8Array = new Uint8Array(data);
-        blob = new Blob([uint8Array], { type: document.mime_type || 'application/octet-stream' });
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
       }
 
       // Create download link
@@ -183,7 +186,7 @@ export default function DocumentManagement() {
 
       toast({
         title: "Download Started",
-        description: `Downloading ${document.name}`,
+        description: `Downloading ${document.name} (${Math.round(blob.size / 1024)} KB)`,
       });
     } catch (error: any) {
       console.error('Download failed:', error);

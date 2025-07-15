@@ -89,6 +89,9 @@ const handler = async (req: Request): Promise<Response> => {
         user_agent: req.headers.get('user-agent') || null,
       });
 
+    console.log(`Successfully downloaded: ${document.name}, size: ${fileContent.byteLength} bytes`);
+
+    // Return the file directly as binary data
     return new Response(new Uint8Array(fileContent), {
       status: 200,
       headers: {
