@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, X, FileText, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FileDropZoneProps {
   selectedFolder: string;
@@ -31,6 +32,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
   onUploadComplete
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<FileWithMetadata[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -92,54 +94,87 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
 
     try {
       for (const fileData of files) {
-        console.log('Uploading file:', fileData.name);
+        console.log('Uploading file:', fileData.name, 'Size:', fileData.file.size, 'bytes');
         
         try {
-          // Convert file to base64
-          const fileBuffer = await fileData.file.arrayBuffer();
-          const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+          // Generate unique filename to prevent conflicts
+          const timestamp = Date.now();
+          const uniqueFileName = `${timestamp}_${fileData.name}`;
+          const storagePath = `${selectedFolder}/${uniqueFileName}`;
 
-          const uploadRequest = {
-            fileName: fileData.name,
-            fileContent: base64Content,
-            fileSize: fileData.file.size,
-            mimeType: fileData.file.type,
-            category: selectedFolder,
-            subcategory: fileData.subcategory || null,
-            description: fileData.description || null,
-            tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
-          };
+          console.log('Uploading to storage path:', storagePath);
 
-          console.log('Sending upload request for:', fileData.name, {
-            fileName: uploadRequest.fileName,
-            fileSize: uploadRequest.fileSize,
-            mimeType: uploadRequest.mimeType,
-            category: uploadRequest.category,
-            subcategory: uploadRequest.subcategory
-          });
-          
-          // Check authentication status before calling function
-          const { data: { session } } = await supabase.auth.getSession();
-          console.log('Current session:', session ? 'authenticated' : 'not authenticated');
-          
-          const { data, error } = await supabase.functions.invoke('upload-file-local', {
-            body: uploadRequest,
-          });
+          // Upload directly to Supabase Storage (more efficient for large files)
+          const { data: storageData, error: storageError } = await supabase.storage
+            .from('documents')
+            .upload(storagePath, fileData.file, {
+              contentType: fileData.file.type,
+              upsert: false
+            });
 
-          console.log('Upload response for', fileData.name, ':', { data, error });
-
-          if (error) {
-            console.error('Upload error for', fileData.name, ':', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
+          if (storageError) {
+            console.error('Storage upload error for', fileData.name, ':', storageError);
             toast({
               title: "Upload Failed",
-              description: `Failed to upload ${fileData.name}: ${error.message}`,
+              description: `Failed to upload ${fileData.name}: ${storageError.message}`,
               variant: "destructive",
             });
-          } else {
-            console.log('Successfully uploaded:', fileData.name);
-            uploadedCount++;
+            continue;
           }
+
+          console.log('File uploaded to storage successfully:', fileData.name);
+
+          // Save document metadata to database
+          const { data: document, error: dbError } = await supabase
+            .from('documents')
+            .insert({
+              name: fileData.name,
+              file_path: storagePath,
+              file_size: fileData.file.size,
+              mime_type: fileData.file.type,
+              category: selectedFolder,
+              subcategory: fileData.subcategory || null,
+              description: fileData.description || null,
+              tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
+              uploaded_by: user?.id,
+            })
+            .select()
+            .single();
+
+          if (dbError) {
+            console.error('Database error for', fileData.name, ':', dbError);
+            // Try to clean up the uploaded file if database insert fails
+            try {
+              await supabase.storage
+                .from('documents')
+                .remove([storagePath]);
+              console.log('Cleaned up storage file after database error');
+            } catch (cleanupError) {
+              console.error('Failed to cleanup file after database error:', cleanupError);
+            }
+            
+            toast({
+              title: "Upload Failed",
+              description: `Failed to save ${fileData.name} metadata: ${dbError.message}`,
+              variant: "destructive",
+            });
+            continue;
+          }
+
+          // Log the upload action
+          await supabase
+            .from('audit_logs')
+            .insert({
+              action: 'upload',
+              document_id: document.id,
+              user_id: user?.id,
+              ip_address: 'unknown',
+              user_agent: navigator.userAgent,
+            });
+
+          console.log('Successfully uploaded:', fileData.name);
+          uploadedCount++;
+
         } catch (fileError) {
           console.error('Error processing file', fileData.name, ':', fileError);
           toast({
