@@ -52,9 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get document ID from URL
-    const url = new URL(req.url);
-    const documentId = url.pathname.split('/').pop();
+    const { documentId } = await req.json();
 
     if (!documentId) {
       return new Response(JSON.stringify({ error: 'Document ID required' }), {
@@ -63,41 +61,41 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get document metadata from database
-    const { data: document, error: dbError } = await supabase
+    // Get document metadata first
+    const { data: document, error: fetchError } = await supabase
       .from('documents')
       .select('*')
       .eq('id', documentId)
       .single();
 
-    if (dbError || !document) {
+    if (fetchError || !document) {
       return new Response(JSON.stringify({ error: 'Document not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Convert public path back to actual file path
-    const actualFilePath = `/var/www${document.file_path}`;
+    console.log(`Deleting document: ${document.name} at path: ${document.file_path}`);
 
-    // Delete the physical file
-    try {
-      await Deno.remove(actualFilePath);
-      console.log(`File deleted: ${actualFilePath}`);
-    } catch (error) {
-      console.error('Failed to delete file:', error);
-      // Continue with database deletion even if file deletion fails
+    // Delete file from Supabase Storage
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([document.file_path]);
+
+    if (storageError) {
+      console.error('Storage deletion error:', storageError);
+      // Continue with database deletion even if storage fails
     }
 
-    // Delete document record from database
-    const { error: deleteError } = await supabase
+    // Delete document metadata from database
+    const { error: dbError } = await supabase
       .from('documents')
       .delete()
       .eq('id', documentId);
 
-    if (deleteError) {
-      console.error('Database deletion error:', deleteError);
-      return new Response(JSON.stringify({ error: 'Failed to delete document record' }), {
+    if (dbError) {
+      console.error('Database deletion error:', dbError);
+      return new Response(JSON.stringify({ error: 'Failed to delete document metadata' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -113,6 +111,8 @@ const handler = async (req: Request): Promise<Response> => {
         ip_address: req.headers.get('x-forwarded-for') || 'unknown',
         user_agent: req.headers.get('user-agent') || null,
       });
+
+    console.log(`Successfully deleted document: ${document.name}`);
 
     return new Response(JSON.stringify({ 
       success: true, 

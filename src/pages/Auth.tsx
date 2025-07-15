@@ -157,7 +157,7 @@ export default function Auth() {
               >
                 {isSignUp 
                   ? 'Already have an account? Sign in' 
-                  : 'Need to create an admin account? Sign up'
+                  : 'Need access? Request account'
                 }
               </Button>
             </div>

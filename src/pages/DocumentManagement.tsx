@@ -20,7 +20,8 @@ import {
   Folder,
   Upload,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  Trash2
 } from 'lucide-react';
 import { FolderGrid } from '@/components/FolderGrid';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -165,6 +166,34 @@ export default function DocumentManagement() {
       toast({
         title: "Download Failed",
         description: error.message || "Failed to download document",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (document: Document) => {
+    if (!window.confirm(`Are you sure you want to delete "${document.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-file-local', {
+        body: { documentId: document.id },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Document Deleted",
+        description: `Successfully deleted ${document.name}`,
+      });
+
+      // Refresh the documents list
+      fetchDocuments();
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete document",
         variant: "destructive",
       });
     }
@@ -315,6 +344,17 @@ export default function DocumentManagement() {
                           >
                             <Download className="h-3 w-3" />
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(document)}
+                              title="Delete document"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -381,14 +421,27 @@ export default function DocumentManagement() {
                         {new Date(document.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownload(document)}
-                          title="Download document"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownload(document)}
+                            title="Download document"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(document)}
+                              title="Delete document"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
