@@ -44,7 +44,7 @@ interface Document {
 
 export default function DocumentManagement() {
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -141,34 +141,33 @@ export default function DocumentManagement() {
 
   const handleDownload = async (document: Document) => {
     try {
-      console.log('Starting download for:', document.name);
+      console.log('Starting download for:', document.name, 'at path:', document.file_path);
       
-      // Use fetch directly to get the binary response
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
+      // Use Supabase Storage signed URL for direct download
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(document.file_path, 60); // 60 seconds expiry
+
+      if (urlError) {
+        console.error('Signed URL error:', urlError);
+        throw new Error(`Failed to create download link: ${urlError.message}`);
       }
 
-      const response = await fetch(`https://rzhjagwjxkjlhwmpysxa.supabase.co/functions/v1/download-file-local`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ documentId: document.id }),
-      });
+      if (!signedUrlData?.signedUrl) {
+        throw new Error('No download URL generated');
+      }
 
-      console.log('Download response status:', response.status);
+      console.log('Generated signed URL for download');
 
+      // Download the file directly using the signed URL
+      const response = await fetch(signedUrlData.signedUrl);
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Download error response:', errorText);
-        throw new Error(`Download failed: ${response.status} ${errorText}`);
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
       }
 
-      // Get the binary data
       const blob = await response.blob();
-      console.log('Downloaded blob size:', blob.size, 'bytes');
+      console.log('Downloaded blob size:', blob.size, 'bytes, type:', blob.type);
 
       if (blob.size === 0) {
         throw new Error('Downloaded file is empty');
@@ -179,10 +178,22 @@ export default function DocumentManagement() {
       const link = window.document.createElement('a');
       link.href = url;
       link.download = document.name;
+      link.style.display = 'none';
       window.document.body.appendChild(link);
       link.click();
-      link.remove();
+      window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      // Log the download action
+      await supabase
+        .from('audit_logs')
+        .insert({
+          action: 'download',
+          document_id: document.id,
+          user_id: user?.id,
+          ip_address: 'unknown',
+          user_agent: navigator.userAgent,
+        });
 
       toast({
         title: "Download Started",
