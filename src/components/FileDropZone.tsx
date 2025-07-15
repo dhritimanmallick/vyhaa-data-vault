@@ -91,16 +91,23 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
 
     try {
       for (const fileData of files) {
-        const formData = new FormData();
-        formData.append('file', fileData.file);
-        formData.append('name', fileData.name);
-        formData.append('description', fileData.description);
-        formData.append('tags', fileData.tags);
-        formData.append('category', selectedFolder);
-        formData.append('subcategory', fileData.subcategory);
+        // Convert file to base64
+        const fileBuffer = await fileData.file.arrayBuffer();
+        const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
-        const { error } = await supabase.functions.invoke('upload-document', {
-          body: formData,
+        const uploadRequest = {
+          fileName: fileData.name,
+          fileContent: base64Content,
+          fileSize: fileData.file.size,
+          mimeType: fileData.file.type,
+          category: selectedFolder,
+          subcategory: fileData.subcategory || null,
+          description: fileData.description || null,
+          tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
+        };
+
+        const { error } = await supabase.functions.invoke('upload-file-local', {
+          body: uploadRequest,
         });
 
         if (error) {

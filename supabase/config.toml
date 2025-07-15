@@ -2,3 +2,12 @@ project_id = "rzhjagwjxkjlhwmpysxa"
 
 [functions.create-user]
 verify_jwt = true
+
+[functions.upload-file-local]
+verify_jwt = true
+
+[functions.download-file-local]
+verify_jwt = true
+
+[functions.delete-file-local]
+verify_jwt = true

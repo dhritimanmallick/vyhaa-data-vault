@@ -130,14 +130,15 @@ export const DocumentViewer: React.FC = () => {
 
   const handleDownload = async (document: Document) => {
     try {
-      const { data, error } = await supabase.functions.invoke('download-document', {
+      const { data, error } = await supabase.functions.invoke('download-file-local', {
         body: { documentId: document.id },
       });
 
       if (error) throw error;
 
       // Create download link
-      const url = window.URL.createObjectURL(new Blob([data]));
+      const blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
       const link = window.document.createElement('a');
       link.href = url;
       link.download = document.name;
@@ -153,7 +154,7 @@ export const DocumentViewer: React.FC = () => {
     } catch (error: any) {
       toast({
         title: "Download Failed",
-        description: "Failed to download document",
+        description: error.message || "Failed to download document",
         variant: "destructive",
       });
     }
