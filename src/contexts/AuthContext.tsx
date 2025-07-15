@@ -141,7 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, fullName: string) => {
     try {
       console.log('Starting sign up process for:', email);
-      setLoading(true);
       const defaultPassword = "Welcome@123";
       const redirectUrl = `${window.location.origin}/`;
       

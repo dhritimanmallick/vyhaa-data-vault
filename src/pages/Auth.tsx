@@ -36,9 +36,13 @@ export default function Auth() {
         if (error) {
           setError(error.message);
         } else {
+          // Clear form and show success message
+          setEmail('');
+          setFullName('');
+          setError('');
           toast({
-            title: "Access request submitted!",
-            description: "Your account has been created and is pending admin approval. You'll be notified once approved.",
+            title: "Request sent to Vyuhaa administrator",
+            description: "Your access request has been submitted and is pending admin approval. You will receive an email notification once approved.",
           });
         }
       } else {
