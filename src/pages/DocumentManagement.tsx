@@ -31,8 +31,10 @@ import {
   Search,
   Eye,
   Share,
-  Trash2
+  Trash2,
+  Folder
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Document {
   id: string;
@@ -42,6 +44,8 @@ interface Document {
   file_size: number | null;
   mime_type: string | null;
   tags: string[] | null;
+  category: string | null;
+  subcategory: string | null;
   created_at: string;
   updated_at: string;
   uploaded_by: string;
@@ -67,8 +71,65 @@ export default function DocumentManagement() {
   const [uploadForm, setUploadForm] = useState({
     name: '',
     description: '',
-    tags: ''
+    tags: '',
+    category: '',
+    subcategory: ''
   });
+
+  // Define your data room structure
+  const dataRoomStructure = {
+    "01_Company_Overview": [
+      "01_Pitch Deck",
+      "02_One Pager", 
+      "03_Company Profile",
+      "04_Introductory Video"
+    ],
+    "02_Financials": [
+      "01_Audited Financial Statements",
+      "02_Management Accounts (YTD)",
+      "03_Financial Model",
+      "04_Projections & Assumptions"
+    ],
+    "03_Product_and_Technology": [
+      "01_Product Brochures",
+      "02_Technical Whitepapers", 
+      "03_IP_Filings_and_Patents",
+      "04_Roadmap"
+    ],
+    "04_Market_Information": [
+      "01_Market Research Reports",
+      "02_Competitor Analysis",
+      "03_Regulatory Landscape"
+    ],
+    "05_Team_and_Organization": [
+      "01_Founder_Bios",
+      "02_Key_Team_CVs",
+      "03_Organization_Structure",
+      "04_Board_and_Advisors"
+    ],
+    "06_Legal_and_Compliance": [
+      "01_Company Incorporation Documents",
+      "02_MOA_AOA",
+      "03_Trademark_and_IP_Documents",
+      "04_Regulatory_Certifications"
+    ],
+    "07_Contracts_and_Agreements": [
+      "01_Customer_Contracts",
+      "02_Partner_Agreements",
+      "03_NDAs_and_MOUs"
+    ],
+    "08_Investor_Communications": [
+      "01_Existing_Investor_List",
+      "02_Previous_Rounds_Details",
+      "03_Cap Table",
+      "04_Shareholding_Structure"
+    ],
+    "09_Other_Key_Documents": [
+      "01_Awards_and_Media",
+      "02_Impact_Case_Studies",
+      "03_Additional_Reference_Materials"
+    ]
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [uploading, setUploading] = useState(false);
 
@@ -140,6 +201,8 @@ export default function DocumentManagement() {
       formData.append('name', uploadForm.name);
       formData.append('description', uploadForm.description);
       formData.append('tags', uploadForm.tags);
+      formData.append('category', uploadForm.category);
+      formData.append('subcategory', uploadForm.subcategory);
 
       // Call edge function to handle upload
       const { data, error } = await supabase.functions.invoke('upload-document', {
@@ -155,7 +218,7 @@ export default function DocumentManagement() {
 
       setIsUploadDialogOpen(false);
       setSelectedFile(null);
-      setUploadForm({ name: '', description: '', tags: '' });
+      setUploadForm({ name: '', description: '', tags: '', category: '', subcategory: '' });
       fetchDocuments();
     } catch (error: any) {
       toast({
@@ -290,6 +353,46 @@ export default function DocumentManagement() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={uploadForm.category}
+                  onValueChange={(value) => setUploadForm(prev => ({ ...prev, category: value, subcategory: '' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(dataRoomStructure).map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.replace(/^\d+_/, '').replace(/_/g, ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {uploadForm.category && (
+                <div className="space-y-2">
+                  <Label htmlFor="subcategory">Subcategory</Label>
+                  <Select
+                    value={uploadForm.subcategory}
+                    onValueChange={(value) => setUploadForm(prev => ({ ...prev, subcategory: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a subcategory" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataRoomStructure[uploadForm.category as keyof typeof dataRoomStructure]?.map((subcategory) => (
+                        <SelectItem key={subcategory} value={subcategory}>
+                          {subcategory.replace(/^\d+_/, '').replace(/_/g, ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma separated)</Label>
                 <Input
                   id="tags"
@@ -361,6 +464,7 @@ export default function DocumentManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Tags</TableHead>
@@ -372,6 +476,23 @@ export default function DocumentManagement() {
                 {filteredDocuments.map((document) => (
                   <TableRow key={document.id}>
                     <TableCell className="font-medium">{document.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col space-y-1">
+                        {document.category && (
+                          <div className="flex items-center text-sm">
+                            <Folder className="mr-1 h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">
+                              {document.category.replace(/^\d+_/, '').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        )}
+                        {document.subcategory && (
+                          <div className="text-xs text-muted-foreground ml-4">
+                            {document.subcategory.replace(/^\d+_/, '').replace(/_/g, ' ')}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{document.description || '-'}</TableCell>
                     <TableCell>{formatFileSize(document.file_size)}</TableCell>
                     <TableCell>

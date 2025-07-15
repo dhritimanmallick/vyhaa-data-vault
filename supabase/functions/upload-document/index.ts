@@ -49,6 +49,8 @@ Deno.serve(async (req) => {
     const name = formData.get('name') as string
     const description = formData.get('description') as string
     const tagsString = formData.get('tags') as string
+    const category = formData.get('category') as string
+    const subcategory = formData.get('subcategory') as string
 
     if (!file || !name) {
       throw new Error('File and name are required')
@@ -89,6 +91,8 @@ Deno.serve(async (req) => {
         file_size: file.size,
         mime_type: file.type,
         tags: tags.length > 0 ? tags : null,
+        category: category || null,
+        subcategory: subcategory || null,
         uploaded_by: user.id
       })
       .select()

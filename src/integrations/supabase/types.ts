@@ -107,6 +107,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
           file_path: string
@@ -114,11 +115,13 @@ export type Database = {
           id: string
           mime_type: string | null
           name: string
+          subcategory: string | null
           tags: string[] | null
           updated_at: string
           uploaded_by: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
           file_path: string
@@ -126,11 +129,13 @@ export type Database = {
           id?: string
           mime_type?: string | null
           name: string
+          subcategory?: string | null
           tags?: string[] | null
           updated_at?: string
           uploaded_by: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
           file_path?: string
@@ -138,6 +143,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           name?: string
+          subcategory?: string | null
           tags?: string[] | null
           updated_at?: string
           uploaded_by?: string
