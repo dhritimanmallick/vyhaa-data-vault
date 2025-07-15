@@ -75,8 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Convert blob to array buffer
-    const fileContent = await fileData.arrayBuffer();
+    console.log(`File downloaded from storage: ${document.name}, blob size: ${fileData.size} bytes`);
 
     // Log the download action
     await supabase
@@ -89,16 +88,16 @@ const handler = async (req: Request): Promise<Response> => {
         user_agent: req.headers.get('user-agent') || null,
       });
 
-    console.log(`Successfully downloaded: ${document.name}, size: ${fileContent.byteLength} bytes`);
+    console.log(`Successfully prepared download: ${document.name}, size: ${fileData.size} bytes`);
 
-    // Return the file directly as binary data
-    return new Response(new Uint8Array(fileContent), {
+    // Return the blob directly without any conversion
+    return new Response(fileData.stream(), {
       status: 200,
       headers: {
         ...corsHeaders,
         'Content-Type': document.mime_type || 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${document.name}"`,
-        'Content-Length': fileContent.byteLength.toString(),
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(document.name)}"`,
+        'Content-Length': fileData.size.toString(),
       },
     });
 
