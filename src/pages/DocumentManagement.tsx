@@ -343,23 +343,13 @@ export default function DocumentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={uploadForm.description}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter document description"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Category (Optional)</Label>
                 <Select
                   value={uploadForm.category}
                   onValueChange={(value) => setUploadForm(prev => ({ ...prev, category: value, subcategory: '' }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder="Select a category (or leave blank)" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.keys(dataRoomStructure).map((category) => (
@@ -373,13 +363,13 @@ export default function DocumentManagement() {
               
               {uploadForm.category && (
                 <div className="space-y-2">
-                  <Label htmlFor="subcategory">Subcategory</Label>
+                  <Label htmlFor="subcategory">Subcategory (Optional)</Label>
                   <Select
                     value={uploadForm.subcategory}
                     onValueChange={(value) => setUploadForm(prev => ({ ...prev, subcategory: value }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a subcategory" />
+                      <SelectValue placeholder="Select a subcategory (or leave blank)" />
                     </SelectTrigger>
                     <SelectContent>
                       {dataRoomStructure[uploadForm.category as keyof typeof dataRoomStructure]?.map((subcategory) => (
@@ -393,7 +383,18 @@ export default function DocumentManagement() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma separated)</Label>
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  id="description"
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description of the document"
+                  rows={2}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (Optional)</Label>
                 <Input
                   id="tags"
                   value={uploadForm.tags}
