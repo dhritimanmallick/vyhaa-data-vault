@@ -40,15 +40,17 @@ export default function Layout() {
           </div>
 
           <nav className="flex items-center space-x-4">
-            <Link to="/">
-              <Button 
-                variant={location.pathname === '/' ? 'default' : 'ghost'} 
-                size="sm"
-              >
-                <Home className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
-            </Link>
+            {isAdmin && (
+              <Link to="/dashboard">
+                <Button 
+                  variant={location.pathname === '/dashboard' ? 'default' : 'ghost'} 
+                  size="sm"
+                >
+                  <Home className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            )}
             {isAdmin ? (
               <>
                 <Link to="/documents">

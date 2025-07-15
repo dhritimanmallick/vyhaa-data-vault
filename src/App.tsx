@@ -12,6 +12,7 @@ import UserManagement from "@/pages/UserManagement";
 import DocumentManagement from "@/pages/DocumentManagement";
 import DocumentViewer from "@/pages/DocumentViewer";
 import NotFound from "@/pages/NotFound";
+import UserRedirect from "@/components/UserRedirect";
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,16 @@ const App = () => (
                 <Layout />
               </ProtectedRoute>
             }>
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <ProtectedRoute>
+                  <UserRedirect />
+                </ProtectedRoute>
+              } />
+              <Route path="dashboard" element={
+                <ProtectedRoute requireAdmin>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
               <Route path="users" element={
                 <ProtectedRoute requireAdmin>
                   <UserManagement />
