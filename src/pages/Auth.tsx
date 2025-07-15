@@ -17,7 +17,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
 
   // Redirect if already authenticated
   if (user && !loading) {
@@ -76,11 +76,18 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img 
+              src="/lovable-uploads/00950047-12dc-46d5-a400-3a7c64c2e12a.png" 
+              alt="VYUHAA Logo" 
+              className="h-20 w-auto"
+            />
+          </div>
           <CardTitle className="text-2xl font-bold">
-            Vyuhaa Med Data
+            VYUHAA Data Room
           </CardTitle>
           <CardDescription>
-            {isSignUp ? 'Create your admin account' : 'Sign in to access your documents'}
+            {isSignUp ? 'Join the secure data management platform' : 'Sign in to access your documents'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -156,7 +163,7 @@ export default function Auth() {
                   {isSignUp ? 'Creating account...' : 'Signing in...'}
                 </div>
               ) : (
-                isSignUp ? 'Create Admin Account' : 'Sign In'
+                isSignUp ? 'Join VYUHAA Data Room' : 'Sign In'
               )}
             </Button>
             
