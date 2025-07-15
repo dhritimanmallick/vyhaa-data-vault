@@ -13,7 +13,6 @@ export default function Auth() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -33,11 +32,7 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        if (password !== confirmPassword) {
-          setError('Passwords do not match');
-          return;
-        }
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, fullName);
         if (error) {
           setError(error.message);
         } else {
@@ -111,28 +106,15 @@ export default function Auth() {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-
-            {isSignUp && (
+            {!isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
-                  id="confirmPassword"
+                  id="password"
                   type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
                 />
@@ -169,7 +151,6 @@ export default function Auth() {
                   setError('');
                   setEmail('');
                   setPassword('');
-                  setConfirmPassword('');
                   setFullName('');
                 }}
                 className="text-sm"
