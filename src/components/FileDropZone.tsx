@@ -118,6 +118,10 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
             subcategory: uploadRequest.subcategory
           });
           
+          // Check authentication status before calling function
+          const { data: { session } } = await supabase.auth.getSession();
+          console.log('Current session:', session ? 'authenticated' : 'not authenticated');
+          
           const { data, error } = await supabase.functions.invoke('upload-file-local', {
             body: uploadRequest,
           });
@@ -126,6 +130,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
 
           if (error) {
             console.error('Upload error for', fileData.name, ':', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             toast({
               title: "Upload Failed",
               description: `Failed to upload ${fileData.name}: ${error.message}`,
