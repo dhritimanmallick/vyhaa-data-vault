@@ -36,13 +36,13 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="documents" element={
-                <ProtectedRoute requireAdmin>
+                <ProtectedRoute>
                   <DocumentManagement />
                 </ProtectedRoute>
               } />
               <Route path="view-documents" element={
                 <ProtectedRoute>
-                  <DocumentViewer />
+                  <DocumentManagement />
                 </ProtectedRoute>
               } />
             </Route>

@@ -86,11 +86,13 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
   const uploadFiles = async () => {
     if (files.length === 0) return;
 
+    console.log('Starting upload process for', files.length, 'files');
     setUploading(true);
     let uploadedCount = 0;
 
     try {
       for (const fileData of files) {
+        console.log('Uploading file:', fileData.name);
         // Convert file to base64
         const fileBuffer = await fileData.file.arrayBuffer();
         const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
@@ -106,9 +108,13 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
           tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
         };
 
-        const { error } = await supabase.functions.invoke('upload-file-local', {
+        console.log('Sending upload request:', uploadRequest);
+        
+        const { data, error } = await supabase.functions.invoke('upload-file-local', {
           body: uploadRequest,
         });
+
+        console.log('Upload response:', { data, error });
 
         if (error) {
           console.error('Upload error for', fileData.name, ':', error);

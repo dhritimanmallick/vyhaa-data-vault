@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { FolderGrid } from '@/components/FolderGrid';
 import { FileDropZone } from '@/components/FileDropZone';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Document {
   id: string;
@@ -42,6 +43,7 @@ interface Document {
 
 export default function DocumentManagement() {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -206,11 +208,15 @@ export default function DocumentManagement() {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Document Management</h1>
+            <h1 className="text-3xl font-bold">
+              {isAdmin ? 'Document Management' : 'Document Viewer'}
+            </h1>
             <p className="text-muted-foreground">
               {selectedFolder 
-                ? `Managing: ${formatFolderName(selectedFolder)}` 
-                : 'Select a folder to upload documents or view all documents below'
+                ? `${isAdmin ? 'Managing' : 'Viewing'}: ${formatFolderName(selectedFolder)}` 
+                : isAdmin 
+                  ? 'Select a folder to upload documents or view all documents below'
+                  : 'Browse and download available documents'
               }
             </p>
           </div>
@@ -236,18 +242,20 @@ export default function DocumentManagement() {
           selectedFolder={selectedFolder}
         />
       ) : (
-        /* Selected Folder View with Upload */
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Left: Upload Zone */}
-          <div>
-            <FileDropZone
-              selectedFolder={selectedFolder}
-              dataRoomStructure={dataRoomStructure}
-              onUploadComplete={onUploadComplete}
-            />
-          </div>
+        /* Selected Folder View */
+        <div className={`grid grid-cols-1 gap-6 ${isAdmin ? 'xl:grid-cols-2' : ''}`}>
+          {/* Upload Zone - Only for Admins */}
+          {isAdmin && (
+            <div>
+              <FileDropZone
+                selectedFolder={selectedFolder}
+                dataRoomStructure={dataRoomStructure}
+                onUploadComplete={onUploadComplete}
+              />
+            </div>
+          )}
 
-          {/* Right: Documents in this folder */}
+          {/* Documents in this folder */}
           <div>
             <Card>
               <CardHeader>
@@ -272,9 +280,11 @@ export default function DocumentManagement() {
                     <p className="text-muted-foreground">
                       {searchTerm ? 'No documents match your search' : 'No documents in this folder yet'}
                     </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Drag and drop files to the upload area to get started
-                    </p>
+                    {isAdmin && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Drag and drop files to the upload area to get started
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -301,6 +311,7 @@ export default function DocumentManagement() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDownload(document)}
+                            title="Download document"
                           >
                             <Download className="h-3 w-3" />
                           </Button>
@@ -374,6 +385,7 @@ export default function DocumentManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownload(document)}
+                          title="Download document"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
