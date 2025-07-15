@@ -42,8 +42,8 @@ export default function Auth() {
           setError(error.message);
         } else {
           toast({
-            title: "Account created!",
-            description: "You have successfully signed up and are now logged in.",
+            title: "Access request submitted!",
+            description: "Your account has been created and is pending admin approval. You'll be notified once approved.",
           });
         }
       } else {
@@ -76,18 +76,11 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/lovable-uploads/00950047-12dc-46d5-a400-3a7c64c2e12a.png" 
-              alt="VYUHAA Logo" 
-              className="h-20 w-auto"
-            />
-          </div>
           <CardTitle className="text-2xl font-bold">
-            VYUHAA Data Room
+            VYUHAA MED DATA ROOM
           </CardTitle>
           <CardDescription>
-            {isSignUp ? 'Join the secure data management platform' : 'Sign in to access your documents'}
+            {isSignUp ? 'Request access to the secure data management platform' : 'Sign in to access your documents'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -163,7 +156,7 @@ export default function Auth() {
                   {isSignUp ? 'Creating account...' : 'Signing in...'}
                 </div>
               ) : (
-                isSignUp ? 'Join VYUHAA Data Room' : 'Sign In'
+                isSignUp ? 'Request Access' : 'Sign In'
               )}
             </Button>
             
