@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -13,28 +11,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Upload, 
   Download, 
   FileText, 
-  Plus, 
   Search,
+  Folder,
+  Upload,
   Eye,
-  Share,
-  Trash2,
-  Folder
+  ArrowLeft
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FolderGrid } from '@/components/FolderGrid';
+import { FileDropZone } from '@/components/FileDropZone';
 
 interface Document {
   id: string;
@@ -51,30 +40,13 @@ interface Document {
   uploaded_by: string;
 }
 
-interface Profile {
-  id: string;
-  user_id: string;
-  email: string;
-  full_name: string;
-  role: 'admin' | 'user';
-}
-
 export default function DocumentManagement() {
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadForm, setUploadForm] = useState({
-    name: '',
-    description: '',
-    tags: '',
-    category: '',
-    subcategory: ''
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
 
   // Define your data room structure
   const dataRoomStructure = {
@@ -130,8 +102,6 @@ export default function DocumentManagement() {
       "03_Additional_Reference_Materials"
     ]
   };
-  const [searchTerm, setSearchTerm] = useState('');
-  const [uploading, setUploading] = useState(false);
 
   const fetchDocuments = async () => {
     try {
@@ -142,94 +112,29 @@ export default function DocumentManagement() {
 
       if (error) throw error;
       setDocuments(data || []);
+      
+      // Calculate document counts by category
+      const counts: Record<string, number> = {};
+      data?.forEach(doc => {
+        if (doc.category) {
+          counts[doc.category] = (counts[doc.category] || 0) + 1;
+        }
+      });
+      setDocumentCounts(counts);
     } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to fetch documents",
         variant: "destructive",
       });
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'user')
-        .order('full_name');
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive",
-      });
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchDocuments(), fetchUsers()]);
-      setLoading(false);
-    };
-    loadData();
+    fetchDocuments();
   }, []);
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      if (!uploadForm.name) {
-        setUploadForm(prev => ({ ...prev, name: file.name }));
-      }
-    }
-  };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile) return;
-
-    setUploading(true);
-    try {
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('name', uploadForm.name);
-      formData.append('description', uploadForm.description);
-      formData.append('tags', uploadForm.tags);
-      formData.append('category', uploadForm.category);
-      formData.append('subcategory', uploadForm.subcategory);
-
-      // Call edge function to handle upload
-      const { data, error } = await supabase.functions.invoke('upload-document', {
-        body: formData,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Document uploaded successfully",
-      });
-
-      setIsUploadDialogOpen(false);
-      setSelectedFile(null);
-      setUploadForm({ name: '', description: '', tags: '', category: '', subcategory: '' });
-      fetchDocuments();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to upload document",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleDownload = async (document: Document) => {
     try {
@@ -249,45 +154,40 @@ export default function DocumentManagement() {
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Log audit trail
-      if (user) {
-        await supabase.from('audit_logs').insert({
-          action: 'download',
-          document_id: document.id,
-          user_id: user.id,
-          ip_address: window.location.hostname,
-          user_agent: navigator.userAgent,
-        });
-      }
-
+      toast({
+        title: "Download Started",
+        description: `Downloading ${document.name}`,
+      });
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Download Failed",
         description: "Failed to download document",
         variant: "destructive",
       });
     }
   };
 
-  const openShareDialog = (document: Document) => {
-    setSelectedDocument(document);
-    setIsShareDialogOpen(true);
-  };
-
-  const filteredDocuments = documents.filter(doc =>
-    doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesFolder = !selectedFolder || doc.category === selectedFolder;
+    return matchesSearch && matchesFolder;
+  });
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown';
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatFolderName = (name: string) => {
+    return name.replace(/^\d+_/, '').replace(/_/g, ' ');
+  };
+
+  const onUploadComplete = () => {
+    fetchDocuments();
   };
 
   if (loading) {
@@ -302,214 +202,173 @@ export default function DocumentManagement() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Document Management</h1>
-          <p className="text-muted-foreground">Upload, manage, and share secure documents</p>
-        </div>
-        
-        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Upload Document
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Document Management</h1>
+            <p className="text-muted-foreground">
+              {selectedFolder 
+                ? `Managing: ${formatFolderName(selectedFolder)}` 
+                : 'Select a folder to upload documents or view all documents below'
+              }
+            </p>
+          </div>
+          
+          {selectedFolder && (
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedFolder(null)}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Folders
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Upload New Document</DialogTitle>
-              <DialogDescription>
-                Upload a secure document to the dataroom
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleUpload} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="file">File</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileSelect}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Document Name</Label>
-                <Input
-                  id="name"
-                  value={uploadForm.name}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter document name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category (Optional)</Label>
-                <Select
-                  value={uploadForm.category}
-                  onValueChange={(value) => setUploadForm(prev => ({ ...prev, category: value, subcategory: '' }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category (or leave blank)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(dataRoomStructure).map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.replace(/^\d+_/, '').replace(/_/g, ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {uploadForm.category && (
-                <div className="space-y-2">
-                  <Label htmlFor="subcategory">Subcategory (Optional)</Label>
-                  <Select
-                    value={uploadForm.subcategory}
-                    onValueChange={(value) => setUploadForm(prev => ({ ...prev, subcategory: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a subcategory (or leave blank)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dataRoomStructure[uploadForm.category as keyof typeof dataRoomStructure]?.map((subcategory) => (
-                        <SelectItem key={subcategory} value={subcategory}>
-                          {subcategory.replace(/^\d+_/, '').replace(/_/g, ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  value={uploadForm.description}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of the document"
-                  rows={2}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags (Optional)</Label>
-                <Input
-                  id="tags"
-                  value={uploadForm.tags}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
-                  placeholder="tag1, tag2, tag3"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsUploadDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={uploading || !selectedFile}>
-                  {uploading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Uploading...
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+          )}
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="flex items-center">
-                <FileText className="mr-2 h-5 w-5" />
-                Documents ({filteredDocuments.length})
-              </CardTitle>
-              <CardDescription>
-                Manage and share secure documents
-              </CardDescription>
-            </div>
+      {!selectedFolder ? (
+        /* Folder Grid View */
+        <FolderGrid
+          dataRoomStructure={dataRoomStructure}
+          documentCounts={documentCounts}
+          onFolderClick={setSelectedFolder}
+          selectedFolder={selectedFolder}
+        />
+      ) : (
+        /* Selected Folder View with Upload */
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Left: Upload Zone */}
+          <div>
+            <FileDropZone
+              selectedFolder={selectedFolder}
+              dataRoomStructure={dataRoomStructure}
+              onUploadComplete={onUploadComplete}
+            />
+          </div>
+
+          {/* Right: Documents in this folder */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Folder className="mr-2 h-5 w-5" />
+                  Documents in {formatFolderName(selectedFolder)}
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {filteredDocuments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      {searchTerm ? 'No documents match your search' : 'No documents in this folder yet'}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Drag and drop files to the upload area to get started
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredDocuments.map((document) => (
+                      <div key={document.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium text-sm">{document.name}</p>
+                            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                              <span>{formatFileSize(document.file_size)}</span>
+                              <span>•</span>
+                              <span>{new Date(document.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {document.tags && document.tags.length > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {document.tags.length} tag{document.tags.length !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownload(document)}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* All Documents Overview */}
+      {!selectedFolder && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <FileText className="mr-2 h-5 w-5" />
+              All Documents ({documents.length})
+            </CardTitle>
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search documents..."
+                placeholder="Search all documents..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-64"
               />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredDocuments.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {searchTerm ? 'No documents match your search' : 'No documents uploaded yet'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Uploaded</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDocuments.map((document) => (
-                  <TableRow key={document.id}>
-                    <TableCell className="font-medium">{document.name}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col space-y-1">
-                        {document.category && (
-                          <div className="flex items-center text-sm">
-                            <Folder className="mr-1 h-3 w-3 text-muted-foreground" />
-                            <span className="font-medium">
-                              {document.category.replace(/^\d+_/, '').replace(/_/g, ' ')}
-                            </span>
-                          </div>
-                        )}
-                        {document.subcategory && (
-                          <div className="text-xs text-muted-foreground ml-4">
-                            {document.subcategory.replace(/^\d+_/, '').replace(/_/g, ' ')}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{document.description || '-'}</TableCell>
-                    <TableCell>{formatFileSize(document.file_size)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {document.tags?.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tag}
+          </CardHeader>
+          <CardContent>
+            {filteredDocuments.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'No documents match your search' : 'No documents uploaded yet'}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Uploaded</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDocuments.map((document) => (
+                    <TableRow key={document.id}>
+                      <TableCell className="font-medium">{document.name}</TableCell>
+                      <TableCell>
+                        {document.category ? (
+                          <Badge variant="secondary">
+                            {formatFolderName(document.category)}
                           </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(document.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
+                        ) : (
+                          <span className="text-muted-foreground">Uncategorized</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{formatFileSize(document.file_size)}</TableCell>
+                      <TableCell>
+                        {new Date(document.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
                         <Button
                           variant="outline"
                           size="sm"
@@ -517,22 +376,15 @@ export default function DocumentManagement() {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openShareDialog(document)}
-                        >
-                          <Share className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -49,7 +49,7 @@ export default function Layout() {
                 Dashboard
               </Button>
             </Link>
-            {isAdmin && (
+            {isAdmin ? (
               <>
                 <Link to="/documents">
                   <Button 
@@ -57,7 +57,7 @@ export default function Layout() {
                     size="sm"
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Documents
+                    Manage Documents
                   </Button>
                 </Link>
                 <Link to="/users">
@@ -69,7 +69,26 @@ export default function Layout() {
                     Users
                   </Button>
                 </Link>
+                <Link to="/view-documents">
+                  <Button 
+                    variant={location.pathname === '/view-documents' ? 'default' : 'ghost'} 
+                    size="sm"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Documents
+                  </Button>
+                </Link>
               </>
+            ) : (
+              <Link to="/view-documents">
+                <Button 
+                  variant={location.pathname === '/view-documents' ? 'default' : 'ghost'} 
+                  size="sm"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Documents
+                </Button>
+              </Link>
             )}
           </nav>
 
