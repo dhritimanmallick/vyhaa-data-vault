@@ -28,7 +28,7 @@ export default function Auth() {
     e.preventDefault();
     if (isSubmitting) return;
 
-    setError('');
+    console.log('Auth form submitted:', { isSignUp, email, password: '***' });
     setIsSubmitting(true);
 
     try {

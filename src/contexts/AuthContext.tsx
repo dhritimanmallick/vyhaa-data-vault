@@ -63,17 +63,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', { event, user: session?.user?.email });
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           // Defer profile fetching to avoid deadlocks
           setTimeout(async () => {
+            console.log('Fetching profile for user:', session.user.id);
             const profileData = await fetchProfile(session.user.id);
+            console.log('Profile data fetched:', profileData);
             setProfile(profileData);
             setLoading(false);
           }, 0);
         } else {
+          console.log('No session/user, clearing profile');
           setProfile(null);
           setLoading(false);
         }
@@ -100,19 +104,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Starting sign in process for:', email);
       setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      console.log('Sign in result:', { error });
       return { error };
     } catch (error) {
+      console.error('Sign in caught error:', error);
       return { error };
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
+      console.log('Starting sign up process for:', email);
       setLoading(true);
       const redirectUrl = `${window.location.origin}/`;
       
@@ -126,8 +134,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       });
+      console.log('Sign up result:', { error });
       return { error };
     } catch (error) {
+      console.error('Sign up caught error:', error);
       return { error };
     }
   };
