@@ -63,28 +63,21 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Convert public path back to actual file path
-    const actualFilePath = `./uploads${document.file_path.replace('/uploads', '')}`;
+    // Download file from Supabase Storage
+    const { data: fileData, error: storageError } = await supabase.storage
+      .from('documents')
+      .download(document.file_path);
 
-    // Check if file exists
-    try {
-      const fileInfo = await Deno.stat(actualFilePath);
-      if (!fileInfo.isFile) {
-        return new Response(JSON.stringify({ error: 'File not found on disk' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } catch (error) {
-      console.error('File not found:', error);
-      return new Response(JSON.stringify({ error: 'File not found on disk' }), {
+    if (storageError || !fileData) {
+      console.error('Storage download error:', storageError);
+      return new Response(JSON.stringify({ error: 'File not found in storage' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Read and return the file
-    const fileContent = await Deno.readFile(actualFilePath);
+    // Convert blob to array buffer
+    const fileContent = await fileData.arrayBuffer();
 
     // Log the download action
     await supabase
@@ -97,13 +90,13 @@ const handler = async (req: Request): Promise<Response> => {
         user_agent: req.headers.get('user-agent') || null,
       });
 
-    return new Response(fileContent, {
+    return new Response(new Uint8Array(fileContent), {
       status: 200,
       headers: {
         ...corsHeaders,
         'Content-Type': document.mime_type || 'application/octet-stream',
         'Content-Disposition': `attachment; filename="${document.name}"`,
-        'Content-Length': fileContent.length.toString(),
+        'Content-Length': fileContent.byteLength.toString(),
       },
     });
 
