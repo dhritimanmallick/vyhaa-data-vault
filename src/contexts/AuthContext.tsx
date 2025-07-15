@@ -106,12 +106,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting sign in process for:', email);
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      console.log('Sign in result:', { error });
-      return { error };
+      
+      if (error) {
+        console.log('Sign in error:', error);
+        return { error };
+      }
+      
+      // Check if user is active after successful authentication
+      if (data.user) {
+        const profileData = await fetchProfile(data.user.id);
+        if (profileData && !profileData.is_active) {
+          // Sign out the user immediately if they're not active
+          await supabase.auth.signOut();
+          return { 
+            error: { 
+              message: 'Your account is pending admin approval. Please contact your administrator.' 
+            } 
+          };
+        }
+      }
+      
+      console.log('Sign in successful');
+      return { error: null };
     } catch (error) {
       console.error('Sign in caught error:', error);
       return { error };
