@@ -189,12 +189,15 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
               id="file-upload"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp4,.jpg,.jpeg,.png,.gif"
             />
-            <Label htmlFor="file-upload">
-              <Button variant="outline" className="cursor-pointer">
-                <Plus className="mr-2 h-4 w-4" />
-                Browse Files
-              </Button>
-            </Label>
+            <Button 
+              variant="outline" 
+              className="cursor-pointer"
+              onClick={() => document.getElementById('file-upload')?.click()}
+              type="button"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Browse Files
+            </Button>
           </div>
 
           {/* File List */}
