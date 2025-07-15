@@ -141,14 +141,37 @@ export default function DocumentManagement() {
 
   const handleDownload = async (document: Document) => {
     try {
+      console.log('Starting download for:', document.name);
+      
       const { data, error } = await supabase.functions.invoke('download-file-local', {
         body: { documentId: document.id },
       });
 
-      if (error) throw error;
+      console.log('Download response:', { data, error });
+
+      if (error) {
+        console.error('Download error:', error);
+        throw error;
+      }
+
+      // The data should be the file content as arrayBuffer
+      if (!data) {
+        throw new Error('No file data received');
+      }
+
+      // Create blob from the response data
+      let blob;
+      if (data instanceof ArrayBuffer) {
+        blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
+      } else if (data instanceof Uint8Array) {
+        blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
+      } else {
+        // If data is base64 or other format, convert it
+        const uint8Array = new Uint8Array(data);
+        blob = new Blob([uint8Array], { type: document.mime_type || 'application/octet-stream' });
+      }
 
       // Create download link
-      const blob = new Blob([data], { type: document.mime_type || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const link = window.document.createElement('a');
       link.href = url;
@@ -163,6 +186,7 @@ export default function DocumentManagement() {
         description: `Downloading ${document.name}`,
       });
     } catch (error: any) {
+      console.error('Download failed:', error);
       toast({
         title: "Download Failed",
         description: error.message || "Failed to download document",

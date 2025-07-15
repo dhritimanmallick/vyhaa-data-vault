@@ -38,9 +38,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get document ID from URL
-    const url = new URL(req.url);
-    const documentId = url.pathname.split('/').pop();
+    // Parse request body to get document ID
+    const { documentId } = await req.json();
 
     if (!documentId) {
       return new Response(JSON.stringify({ error: 'Document ID required' }), {
