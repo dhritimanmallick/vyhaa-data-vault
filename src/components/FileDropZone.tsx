@@ -92,9 +92,32 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
     setUploading(true);
     let uploadedCount = 0;
 
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upload files",
+        variant: "destructive",
+      });
+      setUploading(false);
+      return;
+    }
+
     try {
       for (const fileData of files) {
-        console.log('Uploading file:', fileData.name, 'Size:', fileData.file.size, 'bytes');
+        // Add file size limit check (50MB = 50 * 1024 * 1024 bytes)
+        const maxFileSize = 50 * 1024 * 1024; // 50MB
+        if (fileData.file.size > maxFileSize) {
+          toast({
+            title: "File Too Large",
+            description: `${fileData.name} is ${Math.round(fileData.file.size / 1024 / 1024)}MB. Maximum size is 50MB.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        console.log('Uploading file:', fileData.name, 'Size:', Math.round(fileData.file.size / 1024), 'KB');
         
         try {
           // Generate unique filename to prevent conflicts
@@ -136,7 +159,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
               subcategory: fileData.subcategory || null,
               description: fileData.description || null,
               tags: fileData.tags ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
-              uploaded_by: user?.id,
+              uploaded_by: session.user.id,
             })
             .select()
             .single();
@@ -167,7 +190,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
             .insert({
               action: 'upload',
               document_id: document.id,
-              user_id: user?.id,
+              user_id: session.user.id,
               ip_address: 'unknown',
               user_agent: navigator.userAgent,
             });
